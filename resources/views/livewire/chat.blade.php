@@ -13,10 +13,16 @@
   <div class="w-1/4 border-r bg-gray-50">
     <div class="p-4 font-bold text-gray-700 border-b">Users</div>
     <div class="divide-y">
-      <div class="p-3 cursor-pointer hover:bg-blue-100 transition">
-        <div class="text-gray-800">Test User</div>
-        <div class="text-xs text-gray-500">test@gmail.com</div>
-      </div>
+
+        @foreach($users as $user)
+       
+        <div wire:click="selectUser({{$user->id}})"
+             class="p-3 cursor-pointer hover:bg-blue-100 transitionname
+             {{$selectedUser->id === $user->id ? 'bg-blue-50 font-semibold' : ''}}">
+            <div class="text-gray-800">{{$user->name}}</div>
+            <div class="text-xs text-gray-500">{{$user->email}}</div>
+        </div>
+       @endforeach
     </div>
   </div>
 
@@ -24,8 +30,8 @@
   <div class="w-3/4 flex flex-col">
     <!-- Header -->
     <div class="p-4 border-b bg-gray-50">
-      <div class="text-lg font-semibold text-gray-800">Test User</div>
-      <div class="text-xs text-gray-500">test@gmail.com</div>
+      <div class="text-lg font-semibold text-gray-800">{{$selectedUser->name}}</div>
+      <div class="text-xs text-gray-500">{{$selectedUser->email}}</div>
     </div>
 
     <!-- Messages -->
