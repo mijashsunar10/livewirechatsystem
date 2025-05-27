@@ -19,7 +19,7 @@ class Chat extends Component
      
     public function mount()
     {
-        $this->users = User::whereNot('id',Auth::id())->get(); //means select all users except the one who is currently logged in.
+        $this->users = User::whereNot('id',Auth::id())->latest()->get(); //means select all users except the one who is currently logged in.
       //  You're excluding the logged-in user from the list, presumably because you don't want to show them in the chat user list.
 
       $this->selectedUser = $this->users->first(); //This automatically selects the first user from the list.
@@ -52,7 +52,7 @@ class Chat extends Component
                         $q->where("sender_id",$this->selectedUser->id)
                             ->where("receiver_id",Auth::id());
                     })
-                    ->latest()->get();//This executes the query and returns a collection of all matching messages.
+                    ->get();//This executes the query and returns a collection of all matching messages.
 
 
     }
