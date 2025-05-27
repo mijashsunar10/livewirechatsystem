@@ -24,7 +24,23 @@ class Chat extends Component
 
       $this->selectedUser = $this->users->first(); //This automatically selects the first user from the list.
 
-      $this->messages = ChatMessage::query()//Start a query builder on the ChatMessage model.
+      $this->loadMessages();
+
+     
+
+    }
+    //when we render the livewire it call the mount
+
+    public function selectUser($id)
+    {
+        $this->selectedUser = User::find($id);
+         $this->loadMessages();
+
+    }
+
+    public function loadMessages()
+    {
+         $this->messages = ChatMessage::query()//Start a query builder on the ChatMessage model.
                     ->where(function($q) //This part fetches: Messages I sent to the selected user
 
                     {
@@ -39,12 +55,6 @@ class Chat extends Component
                     ->latest()->get();//This executes the query and returns a collection of all matching messages.
 
 
-    }
-    //when we render the livewire it call the mount
-
-    public function selectUser($id)
-    {
-        $this->selectedUser = User::find($id);
     }
 
     public function submit()
