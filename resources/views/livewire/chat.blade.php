@@ -16,9 +16,11 @@
 
         @foreach($users as $user)
        
-        <div wire:click="selectUser({{$user->id}})"
+        <div wire:click="selectUser({{$user->id}})" 
+            {{-- wire:click="selectUser({{$user->id}})" → when you click, it calls the Livewire selectUser() method with the specific user’s ID. --}}
              class="p-3 cursor-pointer hover:bg-blue-100 transitionname
              {{$selectedUser->id === $user->id ? 'bg-blue-50 font-semibold' : ''}}">
+             {{--  this checks if the currently selected user matches this looped user if yes became bold if no same --}}
             <div class="text-gray-800">{{$user->name}}</div>
             <div class="text-xs text-gray-500">{{$user->email}}</div>
         </div>
@@ -44,8 +46,10 @@
     </div>
 
     <!-- Input -->
-    <form class="p-4 border-t bg-white flex items-center gap-2">
+    <form wire:submit="submit" class="p-4 border-t bg-white flex items-center gap-2">
       <input 
+      wire:model="newMessage"
+
         type="text"
         class="flex-1 border border-gray-300 rounded-full px-4 py-2 text-sm focus:outline-none"
         placeholder="Type your message..." 
