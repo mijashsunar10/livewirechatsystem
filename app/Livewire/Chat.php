@@ -17,10 +17,6 @@ class Chat extends Component
     public $authId;
     public $loginID;
 
-
-
-
-     
     public function mount()
     {
         $this->users = User::whereNot('id',Auth::id())->latest()->get(); //means select all users except the one who is currently logged in.
@@ -81,6 +77,11 @@ class Chat extends Component
         
 
     }
+
+   public function updatedNewMessage($value)
+{
+    $this->dispatch("userTyping", userId: $this->loginID, userName: Auth::user()->name, selectedUserID: $this->selectedUser->id);
+}
 
     public function getListeners()
     {

@@ -49,10 +49,12 @@
       @endforeach
     </div>
 
+  <div id="typing-indicator" class="px-4 pb-1 text-xs text-gray-400 italic h-5"></div>
+<!-- Added h-5 to maintain consistent height -->
     <!-- Input -->
     <form wire:submit="submit" class="p-4 border-t bg-white flex items-center gap-2">
       <input 
-      wire:model="newMessage"
+      wire:model.live="newMessage"
 
         type="text"
         class="flex-1 border border-gray-300 rounded-full px-4 py-2 text-sm focus:outline-none"
@@ -69,3 +71,30 @@
 </div>
 
 </div>
+<script>
+document.addEventListener('Livewire:initialized', () => {
+   
+    // When current user types
+    Livewire.on('userTyping', (event) => {
+        console.log( event);
+        window.Echo.private(`chat.${event.selectedUserID}`)
+            .whisper('typing', {
+                userId: event.userId,
+                userName: event.userName
+            });
+    });
+
+    // Listen for typing events from others
+    window.Echo.private(`chat.{{ $loginID }}`)
+        .listenForWhisper('typing', (event) => {
+            
+           var t = document.getElementById("typing-indicator");
+            .innerText = `${event.userName} is typing...`;
+            
+            // Clear after 2 seconds
+            setTimeout(() => {
+                indicator.innerText = '';
+            }, 2000);
+        });
+});
+</script>
