@@ -1,0 +1,19 @@
+LAravel reverb
+
+ User sends a message
+
+ This fires the MessageSent event
+✅ The event carries the new message data
+
+ Event is set up for broadcasting
+ Send this event out over WebSockets on the private channel chat.{receiver_id}
+
+
+ Laravel Reverb broadcasts it
+ With Reverb running (or Pusher configured), Laravel pushes the event out over WebSockets.
+✅ No page refresh needed
+✅ The receiver’s browser immediately knows a new message came in
+
+Frontend listens for it
+When the event hits the channel, you update the chat window automatically.
+

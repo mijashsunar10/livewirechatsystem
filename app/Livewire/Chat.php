@@ -2,6 +2,7 @@
 
 namespace App\Livewire;
 
+use App\Events\MessageSent;
 use App\Models\ChatMessage;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
@@ -13,6 +14,9 @@ class Chat extends Component
     public $selectedUser;
     public $newMessage;
     public $messages;
+    public $authId;
+    public $loginID;
+
 
 
 
@@ -25,6 +29,7 @@ class Chat extends Component
       $this->selectedUser = $this->users->first(); //This automatically selects the first user from the list.
 
       $this->loadMessages();
+      $this->loginID = Auth::id();
 
      
 
@@ -72,7 +77,25 @@ class Chat extends Component
         $this->newMessage = '' ; 
         // After saving the message, you clear the input field by resetting the $newMessage property to an empty string.
 
+        broadcast(new MessageSent($message));
+        
 
+    }
+
+    public function getListeners()
+    {
+        return[
+            "echo-private:chat.{$this->loginID},MessageSent" => "newMessageNotification"
+        ];
+    }
+
+    public function newMessageNotification($message)
+    {
+        if($message['sender_id']==$this->selectedUser->id)
+        {
+            $messageObj = ChatMessage::find($message['id']);
+            $this->messages->push($messageObj);
+        }
 
     }
 
