@@ -10,94 +10,147 @@ use Livewire\Component;
 
 class Chat extends Component
 {
-    public $users; //declare the public proorpty in my livewire component
+    public $users;
     public $selectedUser;
     public $newMessage;
     public $messages;
     public $authId;
     public $loginID;
+    public $unreadCounts = [];
 
     public function mount()
     {
-        $this->users = User::whereNot('id',Auth::id())->latest()->get(); //means select all users except the one who is currently logged in.
-      //  You're excluding the logged-in user from the list, presumably because you don't want to show them in the chat user list.
-
-      $this->selectedUser = $this->users->first(); //This automatically selects the first user from the list.
-
-      $this->loadMessages();
-      $this->loginID = Auth::id();
-
-     
-
+        $this->loginID = Auth::id();
+        $this->authId = Auth::id();
+        
+        // Get users with their last message and unread counts
+        $this->loadUsersWithUnreadCounts();
+        
+        $this->selectedUser = $this->users->first();
+        $this->loadMessages();
     }
-    //when we render the livewire it call the mount
 
-    public function selectUser($id)
+    public function loadUsersWithUnreadCounts()
     {
-        $this->selectedUser = User::find($id);
-         $this->loadMessages();
-
+        $this->users = User::whereNot('id', $this->authId)
+            ->withCount(['unreadMessages' => function($query) {
+                $query->where('receiver_id', $this->authId);
+            }])
+            ->with(['lastMessage' => function($query) {
+                $query->where(function($q) {
+                    $q->where('sender_id', $this->authId)
+                      ->orWhere('receiver_id', $this->authId);
+                })->orderBy('created_at', 'desc');
+            }])
+            ->orderByDesc(function($query) {
+                $query->select('created_at')
+                    ->from('chat_messages')
+                    ->whereColumn('sender_id', 'users.id')
+                    ->orWhereColumn('receiver_id', 'users.id')
+                    ->orderBy('created_at', 'desc')
+                    ->limit(1);
+            })
+            ->get();
+            
+        // Store unread counts separately for easy access
+        foreach ($this->users as $user) {
+            $this->unreadCounts[$user->id] = $user->unread_messages_count;
+        }
     }
+
+   public function selectUser($id)
+{
+    $this->selectedUser = User::find($id);
+    $this->loadMessages();
+    
+    // Mark messages as read when selecting a user
+    ChatMessage::where('sender_id', $id)
+        ->where('receiver_id', $this->authId)
+        ->whereNull('read_at')
+        ->update(['read_at' => now()]);
+        
+    // Refresh unread counts
+    $this->loadUsersWithUnreadCounts();
+    
+    // Clear typing indicator when switching users
+    $this->dispatch('clearTypingIndicator');
+}
 
     public function loadMessages()
     {
-         $this->messages = ChatMessage::query()//Start a query builder on the ChatMessage model.
-                    ->where(function($q) //This part fetches: Messages I sent to the selected user
-
-                    {
-                        $q->where("sender_id",Auth::id())
-                            ->where("receiver_id",$this->selectedUser->id);//So if you are User 1 and they are User 2,
-                    })
-                    ->orwhere(function($q)//This part fetches:Messages they sent to me.
-                    {
-                        $q->where("sender_id",$this->selectedUser->id)
-                            ->where("receiver_id",Auth::id());
-                    })
-                    ->get();//This executes the query and returns a collection of all matching messages.
-
-
+        $this->messages = ChatMessage::query()
+            ->where(function($q) {
+                $q->where("sender_id", $this->authId)
+                    ->where("receiver_id", $this->selectedUser->id);
+            })
+            ->orWhere(function($q) {
+                $q->where("sender_id", $this->selectedUser->id)
+                    ->where("receiver_id", $this->authId);
+            })
+            ->orderBy('created_at', 'desc')
+            ->get();
+            
+        // Scroll to bottom after loading messages
+        $this->dispatch('scrollToBottom');
     }
 
     public function submit()
     {
-        if(!$this->newMessage) return;// if no any message do nothing
+        if(!$this->newMessage) return;
 
-        $message=ChatMessage::create([
-            'sender_id' => Auth::id(), //the ID of the currently logged-in user 
-            'receiver_id' => $this->selectedUser->id, //he ID of the user you selected in the Livewire component
-            'message' => $this->newMessage,//message → the text of the message you just typed
+        $message = ChatMessage::create([
+            'sender_id' => $this->authId,
+            'receiver_id' => $this->selectedUser->id,
+            'message' => $this->newMessage,
         ]);
 
-        $this->messages->push($message);
-
-        $this->newMessage = '' ; 
-        // After saving the message, you clear the input field by resetting the $newMessage property to an empty string.
-
-        broadcast(new MessageSent($message));
+        $this->messages->prepend($message); // Add to beginning to maintain reverse order
+        $this->newMessage = '';
         
-
+        // Refresh users to update last message order
+        $this->loadUsersWithUnreadCounts();
+        
+        broadcast(new MessageSent($message));
+        $this->dispatch('scrollToBottom');
     }
 
-   public function updatedNewMessage($value)
-{
-    $this->dispatch("userTyping", userId: $this->loginID, userName: Auth::user()->name, selectedUserID: $this->selectedUser->id);
-}
+    public function updatedNewMessage($value)
+    {
+        $this->dispatch("userTyping", 
+            userId: $this->loginID, 
+            userName: Auth::user()->name, 
+            selectedUserID: $this->selectedUser->id
+        );
+    }
 
     public function getListeners()
     {
-        return[
-            "echo-private:chat.{$this->loginID},MessageSent" => "newMessageNotification"
+        return [
+            "echo-private:chat.{$this->loginID},MessageSent" => "newMessageNotification",
+            "scrollToBottom" => "scrollToBottom",
         ];
     }
 
-    public function newMessageNotification($message)
-    {
-        if($message['sender_id']==$this->selectedUser->id)
+            
+        public function newMessageNotification($message)
         {
-            $messageObj = ChatMessage::find($message['id']);
-            $this->messages->push($messageObj);
+            // If message is from currently selected user
+            if($message['sender_id'] == $this->selectedUser->id) {
+                $messageObj = ChatMessage::find($message['id']);
+                $this->messages->prepend($messageObj);
+                $this->dispatch('scrollToBottom');
+                
+                // Mark as read immediately since user is viewing the chat
+                $messageObj->update(['read_at' => now()]);
+            } else {
+                // If message is from another user, update unread count
+                $this->loadUsersWithUnreadCounts();
+            }
         }
 
+    public function scrollToBottom()
+    {
+        $this->dispatch('scrollToBottomEvent');
     }
 
     public function render()

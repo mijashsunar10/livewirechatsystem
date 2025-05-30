@@ -57,4 +57,21 @@ class User extends Authenticatable
             ->map(fn (string $name) => Str::of($name)->substr(0, 1))
             ->implode('');
     }
+
+            public function unreadMessages()
+        {
+            return $this->hasMany(ChatMessage::class, 'sender_id')
+                ->where('receiver_id', auth()->id())
+                ->whereNull('read_at');
+        }
+
+        public function lastMessage()
+        {
+            return $this->hasOne(ChatMessage::class, 'sender_id')
+                ->where(function($query) {
+                    $query->where('sender_id', $this->id)
+                        ->orWhere('receiver_id', $this->id);
+                })
+                ->orderBy('created_at', 'desc');
+        }
 }
