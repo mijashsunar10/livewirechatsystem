@@ -6,8 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class ChatMessage extends Model
 {
-    //
-    protected $fillable = ['sender_id', 'receiver_id', 'message'];
+    protected $fillable = ['sender_id', 'receiver_id', 'message', 'reply_to'];
 
     public function sender()
     {
@@ -16,6 +15,31 @@ class ChatMessage extends Model
 
     public function receiver()
     {
-        return $this->belongsTo(User::class,'receiver_id');
+        return $this->belongsTo(User::class, 'receiver_id');
+    }
+
+    public function repliedMessage()
+    {
+        return $this->belongsTo(ChatMessage::class, 'reply_to');
+    }
+
+    public function replies()
+    {
+        return $this->hasMany(ChatMessage::class, 'reply_to');
+    }
+
+   public function reactions()
+    {
+        return $this->hasMany(MessageReaction::class, 'message_id');
+        // Explicitly specify the foreign key
+    }
+    // Helper to get grouped reactions
+    public function getGroupedReactions()
+    {
+        return $this->reactions()
+            ->selectRaw('reaction, count(*) as count')
+            ->groupBy('reaction')
+            ->orderBy('count', 'desc')
+            ->get();
     }
 }

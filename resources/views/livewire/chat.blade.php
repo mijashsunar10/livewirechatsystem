@@ -49,69 +49,160 @@
         </div>
 
         <!-- Main Chat Section -->
-        <div class="w-3/4 flex flex-col">
-            <!-- Header -->
-            <div class="p-4 border-b bg-gray-50 flex justify-between items-center">
-                <div>
-                    <div class="text-lg font-semibold text-gray-800">{{$selectedUser->name}}</div>
-                    <div class="text-xs text-gray-500">{{$selectedUser->email}}</div>
+     <div class="w-3/4 flex flex-col">
+        <!-- Header -->
+        <div class="p-4 border-b bg-gray-50 flex justify-between items-center">
+            <div>
+                <div class="text-lg font-semibold text-gray-800">{{$selectedUser->name}}</div>
+                <div class="text-xs text-gray-500">{{$selectedUser->email}}</div>
+            </div>
+            @if($unreadCounts[$selectedUser->id] > 0)
+                <span class="bg-blue-600 text-white text-xs px-2 py-1 rounded-full">
+                    {{$unreadCounts[$selectedUser->id]}} unread
+                </span>
+            @endif
+        </div>
+
+        <!-- Messages -->
+        <div class="flex-1 p-4 overflow-y-auto space-y-2 bg-gray-50 flex flex-col-reverse" 
+             id="messages-container">
+           @foreach($messages as $message)
+    <div class="flex {{$message->sender_id === auth()->id()?'justify-end':'justify-start' }}" 
+         x-data="{ showActions: false, showTimestamp: false }" 
+         @mouseenter="showActions = true; showTimestamp = true" 
+         @mouseleave="showActions = false; showTimestamp = false">
+        
+        <!-- Left side actions for SENT messages (blue bubbles) -->
+        @if($message->sender_id === auth()->id())
+        <div class="flex items-center self-end mb-2" x-show="showActions" x-transition>
+            <div class="flex space-x-1 mx-1">
+                <button wire:click="replyTo('{{$message->id}}')" 
+                        class="text-xs p-1 rounded-full bg-gray-100 hover:bg-gray-200">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l7 7m-7-7l7-7" />
+                    </svg>
+                </button>
+                <button wire:click="toggleReactionPicker('{{$message->id}}')" 
+                        class="text-xs p-1 rounded-full bg-gray-100 hover:bg-gray-200">
+                    😊
+                </button>
+            </div>
+        </div>
+        @endif
+
+        <div class="max-w-xs relative">
+            <!-- Timestamp for SENT messages (left side) -->
+            @if($message->sender_id === auth()->id())
+            <div x-show="showTimestamp" class="absolute bottom-0 left-0 -translate-x-full pl-1 text-xs text-gray-500 whitespace-nowrap">
+                {{$message->created_at->format('h:i A')}}
+                @if($message->read_at)
+                    ✓✓
+                @else
+                    ✓
+                @endif
+            </div>
+            @endif
+
+            <!-- Reply preview -->
+            @if($message->reply_to)
+                <div class="mb-1">
+                    <div class="text-xs p-2 bg-gray-200 text-gray-800 rounded-lg shadow">
+                        <div class="font-semibold">
+                            Replying to {{ $message->repliedMessage->sender_id === auth()->id() ? 'yourself' : $message->repliedMessage->sender->name }}
+                        </div>
+                        <div class="truncate">
+                            {{ $message->repliedMessage->message }}
+                        </div>
+                    </div>
                 </div>
-                @if($unreadCounts[$selectedUser->id] > 0)
-                    <span class="bg-blue-600 text-white text-xs px-2 py-1 rounded-full">
-                        {{$unreadCounts[$selectedUser->id]}} unread
-                    </span>
+            @endif
+            
+            <!-- Main message bubble -->
+            <div class="px-4 py-2 rounded-2xl shadow 
+                {{$message->sender_id === auth()->id() ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-800' }}">
+                
+                {{$message->message}}
+                
+                <!-- Reactions -->
+                @if($message->reactions->count() > 0)
+                    <div class="flex flex-wrap gap-1 mt-1">
+                        @foreach($message->getGroupedReactions() as $reaction)
+                            <span class="text-xs bg-{{$message->sender_id === auth()->id() ? 'blue-700' : 'gray-300'}} rounded-full px-1">
+                                {{$reaction->reaction}} {{$reaction->count}}
+                            </span>
+                        @endforeach
+                    </div>
                 @endif
             </div>
 
-            <!-- Messages -->
-            <div class="flex-1 p-4 overflow-y-auto space-y-2 bg-gray-50 flex flex-col-reverse" 
-                 id="messages-container">
-                @foreach($messages as $message)
-                    <div class="flex {{$message->sender_id === auth()->id()?'justify-end':'justify-start' }}">
-                        <div class="max-w-xs px-4 py-2 rounded-2xl shadow 
-                            {{$message->sender_id === auth()->id()?'bg-blue-600 text-white':'bg-gray-200 text-gray-800' }}
-                            {{is_null($message->read_at) && $message->receiver_id === auth()->id() ? 'font-bold' : ''}}">
-                            {{$message->message}}
-                            <div class="text-xs mt-1 {{$message->sender_id === auth()->id()?'text-blue-200':'text-gray-500'}}">
-                                {{$message->created_at->format('h:i A')}}
-                                @if($message->sender_id === auth()->id())
-                                    @if($message->read_at)
-                                        ✓✓
-                                    @else
-                                        ✓
-                                    @endif
-                                @endif
-                            </div>
-                        </div>
-                    </div>
-                @endforeach
+            <!-- Timestamp for RECEIVED messages (right side) -->
+            @if($message->sender_id !== auth()->id())
+            <div x-show="showTimestamp" class="absolute bottom-0 right-0 translate-x-full pr-1 text-xs text-gray-500 whitespace-nowrap">
+                {{$message->created_at->format('h:i A')}}
             </div>
-
-            <div id="typing-indicator" class="px-4 pb-1 text-xs text-gray-400 italic h-5"></div>
-            
-            <!-- Input -->
-            <form wire:submit="submit" class="p-4 border-t bg-white flex items-center gap-2">
-                <input 
-                    wire:model.live="newMessage"
-                    type="text"
-                    class="flex-1 border border-gray-300 rounded-full px-4 py-2 text-sm focus:outline-none"
-                    placeholder="Type your message..." 
-                />
-                <button 
-                    type="submit"
-                    class="bg-blue-600 hover:bg-blue-700 text-white text-sm px-4 py-2 rounded-full"
-                >
-                    Send
-                </button>
-            </form>
+            @endif
         </div>
+
+        <!-- Right side actions for RECEIVED messages (gray bubbles) -->
+        @if($message->sender_id !== auth()->id())
+        <div class="flex items-center self-end mb-2" x-show="showActions" x-transition>
+            <div class="flex space-x-1 mx-1">
+                <button wire:click="toggleReactionPicker('{{$message->id}}')" 
+                        class="text-xs p-1 rounded-full bg-gray-100 hover:bg-gray-200">
+                    😊
+                </button>
+                <button wire:click="replyTo('{{$message->id}}')" 
+                        class="text-xs p-1 rounded-full bg-gray-100 hover:bg-gray-200">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l7 7m-7-7l7-7" />
+                    </svg>
+                </button>
+            </div>
+        </div>
+        @endif
+    </div>
+@endforeach
+        </div>
+
+        <div id="typing-indicator" class="px-4 pb-1 text-xs text-gray-400 italic h-5"></div>
+        
+        <!-- Reply preview -->
+        @if($replyingTo)
+            <div class="px-4 pt-2 bg-gray-100 border-t flex justify-between items-center">
+                <div class="text-xs text-gray-600">
+                    <div class="font-semibold">
+                        Replying to {{ $replyingTo->sender_id === auth()->id() ? 'yourself' : $replyingTo->sender->name }}
+                    </div>
+                    <div class="truncate">
+                        {{ Str::limit($replyingTo->message, 50) }}
+                    </div>
+                </div>
+                <button wire:click="cancelReply" class="text-xs text-gray-500 hover:text-gray-700">
+                    × Cancel
+                </button>
+            </div>
+        @endif
+        
+        <!-- Input -->
+        <form wire:submit="submit" class="p-4 border-t bg-white flex items-center gap-2">
+            <input 
+                wire:model.live="newMessage"
+                type="text"
+                class="flex-1 border border-gray-300 rounded-full px-4 py-2 text-sm focus:outline-none"
+                placeholder="Type your message..." 
+            />
+            <button 
+                type="submit"
+                class="bg-blue-600 hover:bg-blue-700 text-white text-sm px-4 py-2 rounded-full"
+            >
+                Send
+            </button>
+        </form>
     </div>
 </div>
 
 <script>
 document.addEventListener('Livewire:initialized', () => {
-    // When current user types
-    document.addEventListener('Livewire:initialized', () => {
     // When current user types
     Livewire.on('userTyping', (event) => {
         window.Echo.private(`chat.${event.selectedUserID}`)
@@ -119,6 +210,11 @@ document.addEventListener('Livewire:initialized', () => {
                 userId: event.userId,
                 userName: event.userName
             });
+    });
+
+    // Focus message input when reply is clicked
+    Livewire.on('focusMessageInput', () => {
+        document.querySelector('[wire\\:model="newMessage"]').focus();
     });
 
     // Listen for typing events from others
@@ -142,17 +238,6 @@ document.addEventListener('Livewire:initialized', () => {
         });
     });
 
-    // Listen for typing events from others
-    window.Echo.private(`chat.{{ $loginID }}`)
-        .listenForWhisper('typing', (event) => {
-            let indicator = document.getElementById("typing-indicator");
-            indicator.innerText = `${event.userName} is typing...`;
-            
-            setTimeout(() => {
-                indicator.innerText = '';
-            }, 2000);
-        });
-
     // Scroll to bottom function
     Livewire.on('scrollToBottomEvent', () => {
         let container = document.getElementById('messages-container');
@@ -163,3 +248,5 @@ document.addEventListener('Livewire:initialized', () => {
     Livewire.dispatch('scrollToBottomEvent');
 });
 </script>
+
+</div>

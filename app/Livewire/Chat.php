@@ -10,22 +10,24 @@ use Livewire\Component;
 
 class Chat extends Component
 {
-    public $users;
+   public $users;
     public $selectedUser;
     public $newMessage;
     public $messages;
     public $authId;
     public $loginID;
     public $unreadCounts = [];
+    public $replyingTo = null;
+    public $showReactionPicker = null;
+    public $reactions = ['👍', '❤️', '😂', '😮', '😢'];
+
 
     public function mount()
     {
+        
         $this->loginID = Auth::id();
         $this->authId = Auth::id();
-        
-        // Get users with their last message and unread counts
         $this->loadUsersWithUnreadCounts();
-        
         $this->selectedUser = $this->users->first();
         $this->loadMessages();
     }
@@ -94,26 +96,70 @@ class Chat extends Component
         $this->dispatch('scrollToBottom');
     }
 
-    public function submit()
+   public function replyTo($messageId)
+{
+    $this->replyingTo = ChatMessage::find($messageId);
+    $this->dispatch('focusMessageInput');
+}
+
+public function cancelReply()
+{
+    $this->replyingTo = null;
+}
+
+public function toggleReactionPicker($messageId)
+{
+    $this->showReactionPicker = $this->showReactionPicker === $messageId ? null : $messageId;
+}
+ public function addReaction($messageId, $reaction)
     {
-        if(!$this->newMessage) return;
-
-        $message = ChatMessage::create([
-            'sender_id' => $this->authId,
-            'receiver_id' => $this->selectedUser->id,
-            'message' => $this->newMessage,
-        ]);
-
-        $this->messages->prepend($message); // Add to beginning to maintain reverse order
-        $this->newMessage = '';
+        $message = ChatMessage::find($messageId);
         
-        // Refresh users to update last message order
-        $this->loadUsersWithUnreadCounts();
+        $existingReaction = $message->reactions()
+            ->where('user_id', $this->authId)
+            ->first();
+
+        if ($existingReaction) {
+            if ($existingReaction->reaction === $reaction) {
+                $existingReaction->delete(); // Remove if same reaction clicked
+            } else {
+                $existingReaction->update(['reaction' => $reaction]); // Update if different
+            }
+        } else {
+            $message->reactions()->create([
+                'user_id' => $this->authId,
+                'reaction' => $reaction
+            ]);
+        }
         
-        broadcast(new MessageSent($message));
-        $this->dispatch('scrollToBottom');
+        $this->showReactionPicker = null;
+        $this->loadMessages(); // Refresh to show updated reactions
+    }
+// Update your submit method to handle replies
+public function submit()
+{
+    if(!$this->newMessage) return;
+
+    $messageData = [
+        'sender_id' => $this->authId,
+        'receiver_id' => $this->selectedUser->id,
+        'message' => $this->newMessage,
+    ];
+
+    if ($this->replyingTo) {
+        $messageData['reply_to'] = $this->replyingTo->id;
     }
 
+    $message = ChatMessage::create($messageData);
+
+    $this->messages->prepend($message);
+    $this->newMessage = '';
+    $this->replyingTo = null;
+    
+    $this->loadUsersWithUnreadCounts();
+    broadcast(new MessageSent($message));
+    $this->dispatch('scrollToBottom');
+}
     public function updatedNewMessage($value)
     {
         $this->dispatch("userTyping", 
