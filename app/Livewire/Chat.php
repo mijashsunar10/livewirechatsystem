@@ -27,6 +27,10 @@ class Chat extends Component
     public $image;
     public $showImageModal = false;
     public $imagePath;
+    // public $showImageModal = false;
+    public $currentImagePath;
+    public $currentImageIndex = 0;
+    public $chatImages = [];
     
 
     protected $listeners = [];
@@ -42,12 +46,22 @@ class Chat extends Component
                 "echo-private:chat.{$this->loginID},MessageUpdated" => 'messageUpdated',
                 "echo-private:chat.{$this->loginID},MessageDeleted" => 'messageDeleted',
                 'scrollToBottom' => 'scrollToBottom',
+                'prev-image' => 'prevImage',
+                'next-image' => 'nextImage',
+                'close-image-modal' => 'closeImageModal',
             ];
+
+
+               $this->dispatch('init-keyboard-navigation');
             
             $this->loadUsersWithUnreadCounts();
+
             $this->selectedUser = $this->users->first();
             $this->loadMessages();
         }
+
+
+ 
 
 
         public function selectUser($id)
@@ -271,22 +285,68 @@ class Chat extends Component
             $this->loadMessages();
         }
 
+
         public function removeImage()
             {
                 $this->image = null;
             }
 
 
-            public function showImage($imagePath)
+                // Add this method to handle image click
+             public function showImage($imagePath)
             {
-                $this->imagePath = $imagePath;
+                $this->chatImages = $this->messages
+                    ->filter(fn($msg) => $msg->image_path)
+                    ->pluck('image_path')
+                    ->toArray();
+
+                $this->currentImageIndex = array_search($imagePath, $this->chatImages);
+                $this->currentImagePath = $imagePath;
                 $this->showImageModal = true;
+                
+                // Dispatch browser event to setup key listeners
+                $this->dispatch('image-modal-opened');
             }
 
-
+                   // Add these methods to your Chat component
             public function closeImageModal()
             {
                 $this->showImageModal = false;
+                $this->dispatch('imageModalClosed');
+            }
+
+            public function prevImage()
+            {
+                if ($this->currentImageIndex > 0) {
+                    $this->currentImageIndex--;
+                    $this->currentImagePath = $this->chatImages[$this->currentImageIndex];
+                }
+            }
+
+            public function nextImage()
+            {
+                if ($this->currentImageIndex < count($this->chatImages) - 1) {
+                    $this->currentImageIndex++;
+                    $this->currentImagePath = $this->chatImages[$this->currentImageIndex];
+                }
+            }
+
+
+            public function handleKeydown($event)
+            {
+                if (!$this->showImageModal) return;
+
+                switch ($event['key']) {
+                    case 'ArrowLeft':
+                        $this->prevImage();
+                        break;
+                    case 'ArrowRight':
+                        $this->nextImage();
+                        break;
+                    case 'Escape':
+                        $this->closeImageModal();
+                        break;
+                }
             }
 
 

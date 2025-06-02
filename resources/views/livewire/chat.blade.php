@@ -1,9 +1,39 @@
 <div>
+
+    <style>
+        /* Add to your CSS file */
+.fixed {
+    position: fixed;
+}
+.inset-0 {
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+}
+.z-50 {
+    z-index: 50;
+}
+.object-contain {
+    object-fit: contain;
+}
+.absolute {
+    position: absolute;
+}
+.transform {
+    transform: translateX(-50%);
+}
+.hover\:text-gray-300:hover {
+    color: #D1D5DB;
+}
+    </style>
     <div class="relative mb-6 w-full">
         <flux:heading size="xl" level="1">{{ __('Chat') }}</flux:heading>
         <flux:subheading size="lg" class="mb-6">{{ __('Manage your profile and account settings') }}</flux:subheading>
         <flux:separator variant="subtle" />
     </div>
+
+    
 
     <div class="flex h-[550px] text-sm border rounded-xl shadow overflow-hidden bg-white">
         <!-- Sidebar: User List -->
@@ -267,13 +297,136 @@
             Send
         </button>
     </form>
-      @if($showImageModal)
-        <div class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50" wire:click="closeImageModal">
-            <div class="bg-white p-4 rounded-lg max-w-4xl max-h-screen">
-                <img src="{{ Storage::url($imagePath) }}" class="max-w-full max-h-screen">
-            </div>
-        </div>
-    @endif
+     <!-- Image Modal -->
+@if($showImageModal)
+<div class="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50" 
+     x-data
+     x-init="
+        // Focus the modal when it opens
+        $nextTick(() => $el.focus());
+        
+        // Setup key listeners
+        window.addEventListener('keydown', handleKeyDown);
+        
+        // Cleanup when modal closes
+        $wire.on('imageModalClosed', () => {
+            window.removeEventListener('keydown', handleKeyDown);
+        });
+        
+        function handleKeyDown(e) {
+            if (!@this.showImageModal) return;
+            
+            switch(e.key) {
+                case 'ArrowLeft':
+                    e.preventDefault();
+                    @this.call('prevImage');
+                    break;
+                case 'ArrowRight':
+                    e.preventDefault();
+                    @this.call('nextImage');
+                    break;
+                case 'Escape':
+                    e.preventDefault();
+                    @this.call('closeImageModal');
+                    break;
+            }
+        }
+     "
+     wire:key="image-modal-{{ $currentImageIndex }}"
+     tabindex="0"
+     wire:ignore.self
+>
+    <!-- Close Button -->
+    <button 
+        wire:click="closeImageModal"
+        class="absolute top-4 right-4 text-white hover:text-gray-300 z-50 focus:outline-none"
+        @click.stop
+    >
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+    </button>
+
+    <!-- Navigation Arrows -->
+    <div class="absolute inset-0 flex items-center justify-between px-4">
+        @if($currentImageIndex > 0)
+            <button 
+                wire:click="prevImage"
+                class="text-white hover:text-gray-300 z-50 focus:outline-none p-2"
+                @click.stop
+            >
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                </svg>
+            </button>
+        @else
+            <div class="w-12"></div> <!-- Spacer -->
+        @endif
+
+        @if($currentImageIndex < count($chatImages) - 1)
+            <button 
+                wire:click="nextImage"
+                class="text-white hover:text-gray-300 z-50 focus:outline-none p-2"
+                @click.stop
+            >
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                </svg>
+            </button>
+        @else
+            <div class="w-12"></div> <!-- Spacer -->
+        @endif
+    </div>
+
+    <!-- Image Container -->
+    <div class="relative max-w-4xl max-h-screen flex items-center justify-center p-4">
+        <img 
+            src="{{ Storage::url($currentImagePath) }}" 
+            class="max-w-full max-h-screen object-contain cursor-pointer"
+            alt="Chat image"
+            draggable="false"
+            @click.stop="window.Livewire.dispatch('close-image-modal')"
+        >
+    </div>
+
+    <!-- Image Counter -->
+    <div class="absolute bottom-4 left-1/2 transform -translate-x-1/2 text-white text-lg bg-black bg-opacity-50 px-3 py-1 rounded-full">
+        {{ $currentImageIndex + 1 }} / {{ count($chatImages) }}
+    </div>
+</div>
+
+<!-- Add this script to initialize keyboard navigation -->
+<script>
+document.addEventListener('Livewire:initialized', () => {
+    Livewire.on('init-keyboard-navigation', () => {
+        // This ensures keyboard events are captured even when modal is not focused
+        document.addEventListener('keydown', (e) => {
+            if (!@this.showImageModal) return;
+            
+            switch(e.key) {
+                case 'ArrowLeft':
+                    e.preventDefault();
+                    @this.call('prevImage');
+                    break;
+                case 'ArrowRight':
+                    e.preventDefault();
+                    @this.call('nextImage');
+                    break;
+                case 'Escape':
+                    e.preventDefault();
+                    @this.call('closeImageModal');
+                    break;
+            }
+        });
+    });
+    
+    // Dispatch event when modal closes
+    Livewire.on('imageModalClosed', () => {
+        // Cleanup if needed
+    });
+});
+</script>
+@endif
 </div>
         </div>
     </div>
