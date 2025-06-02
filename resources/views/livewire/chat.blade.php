@@ -23,11 +23,12 @@
                             </span>
                         </div>
                         <!-- Only show unread count if not the currently selected user -->
-                        @if($selectedUser->id !== $user->id && $unreadCounts[$user->id] > 0)
-                            <span class="bg-blue-600 text-white text-xs px-2 py-1 rounded-full">
-                                {{$unreadCounts[$user->id]}}
-                            </span>
-                        @endif
+                                        @if($selectedUser->id !== $user->id && $unreadCounts[$user->id] > 0)
+                        <span class="bg-blue-600 text-white text-xs px-2 py-1 rounded-full">
+                            {{$unreadCounts[$user->id]}}
+                        </span>
+                    @endif
+
                     </div>
                         <div class="text-xs text-gray-500 truncate">
                             @if($user->lastMessage)

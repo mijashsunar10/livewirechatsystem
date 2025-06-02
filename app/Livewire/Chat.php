@@ -32,49 +32,61 @@ class Chat extends Component
         $this->loadMessages();
     }
 
-    public function loadUsersWithUnreadCounts()
-    {
-        $this->users = User::whereNot('id', $this->authId)
-            ->withCount(['unreadMessages' => function($query) {
-                $query->where('receiver_id', $this->authId);
-            }])
-            ->with(['lastMessage' => function($query) {
-                $query->where(function($q) {
-                    $q->where('sender_id', $this->authId)
-                      ->orWhere('receiver_id', $this->authId);
-                })->orderBy('created_at', 'desc');
-            }])
-            ->orderByDesc(function($query) {
-                $query->select('created_at')
-                    ->from('chat_messages')
-                    ->whereColumn('sender_id', 'users.id')
-                    ->orWhereColumn('receiver_id', 'users.id')
-                    ->orderBy('created_at', 'desc')
-                    ->limit(1);
-            })
-            ->get();
-            
-        // Store unread counts separately for easy access
-        foreach ($this->users as $user) {
-            $this->unreadCounts[$user->id] = $user->unread_messages_count;
-        }
+   public function loadUsersWithUnreadCounts()
+{
+    $this->users = User::whereNot('id', $this->authId)
+        ->withCount(['unreadMessages' => function($query) {
+            $query->where('receiver_id', $this->authId)
+                  ->whereNull('read_at');
+        }])
+        ->with(['lastMessage' => function($query) {
+            $query->where(function($q) {
+                $q->where('sender_id', $this->authId)
+                  ->orWhere('receiver_id', $this->authId);
+            })->orderBy('created_at', 'desc');
+        }])
+        ->orderByDesc(function($query) {
+            $query->select('created_at')
+                ->from('chat_messages')
+                ->whereColumn('sender_id', 'users.id')
+                ->orWhereColumn('receiver_id', 'users.id')
+                ->orderBy('created_at', 'desc')
+                ->limit(1);
+        })
+        ->get();
+        
+    // Store unread counts separately for easy access
+    foreach ($this->users as $user) {
+        $this->unreadCounts[$user->id] = $user->unread_messages_count;
+    }
+}
+
+        public function selectUser($id)
+{
+    // Before switching users, mark all messages from the current user as read
+    if ($this->selectedUser) {
+        ChatMessage::where('sender_id', $this->selectedUser->id)
+            ->where('receiver_id', $this->authId)
+            ->whereNull('read_at')
+            ->update(['read_at' => now()]);
     }
 
-   public function selectUser($id)
-{
     $this->selectedUser = User::find($id);
     $this->loadMessages();
-    
-    // Mark messages as read when selecting a user
+
+    // Mark messages from newly selected user as read (just in case)
     ChatMessage::where('sender_id', $id)
         ->where('receiver_id', $this->authId)
         ->whereNull('read_at')
         ->update(['read_at' => now()]);
-        
+
     // Refresh unread counts
     $this->loadUsersWithUnreadCounts();
-    
-    // Clear typing indicator when switching users
+
+    // Force Livewire to rerender frontend
+    $this->dispatch('$refresh');
+
+    // Clear typing indicator
     $this->dispatch('clearTypingIndicator');
 }
 
@@ -178,21 +190,24 @@ public function submit()
     }
 
             
-        public function newMessageNotification($message)
-        {
-            // If message is from currently selected user
-            if($message['sender_id'] == $this->selectedUser->id) {
-                $messageObj = ChatMessage::find($message['id']);
-                $this->messages->prepend($messageObj);
-                $this->dispatch('scrollToBottom');
-                
-                // Mark as read immediately since user is viewing the chat
-                $messageObj->update(['read_at' => now()]);
-            } else {
-                // If message is from another user, update unread count
-                $this->loadUsersWithUnreadCounts();
-            }
-        }
+       public function newMessageNotification($message)
+{
+    // If message is from currently selected user
+    if($message['sender_id'] == $this->selectedUser->id) {
+        $messageObj = ChatMessage::find($message['id']);
+        $this->messages->prepend($messageObj);
+        $this->dispatch('scrollToBottom');
+        
+        // Mark as read immediately since user is viewing the chat
+        $messageObj->update(['read_at' => now()]);
+        
+        // Update the unread count for this user
+        $this->loadUsersWithUnreadCounts();
+    } else {
+        // If message is from another user, update unread count
+        $this->loadUsersWithUnreadCounts();
+    }
+}
 
     public function scrollToBottom()
     {
