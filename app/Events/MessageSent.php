@@ -51,11 +51,13 @@ class MessageSent implements ShouldBroadcastNow
 
     public function broadcastWith()//This controls what data is sent to the frontend
     {
-        return[
+         return [
             "id" => $this->message->id,
-             "sender_id" => $this->message->sender_id,
-              "receiver_id" => $this->message->receiver_id,
-              "message" => $this->message->message,
+            "sender_id" => $this->message->sender_id,
+            "receiver_id" => $this->message->receiver_id,
+            "message" => $this->message->message,
+            "image_path" => $this->message->image_path,
+            "created_at" => $this->message->created_at->toDateTimeString(),
         ];
     }
     //Without this, Laravel would just send the entire event object, but here you’re customizing the payload:message_id,sender_id, receiver_id and message

@@ -13,12 +13,18 @@ return new class extends Migration
     {
         Schema::create('chat_messages', function (Blueprint $table) {
             $table->id();
+           
             $table->foreignId('sender_id');
             $table->foreignId('receiver_id');
-            $table->text('message');
+            $table->text('message')->nullable();
+            $table->string('image_path')->nullable();
             $table->timestamp('read_at')->nullable();
             $table->timestamps();
             $table->softDeletes();
+            $table->boolean('deleted_for_sender')->default(false);
+            $table->boolean('deleted_for_receiver')->default(false);
+            $table->timestamp('edited_at')->nullable();
+                   
         });
     }
 
