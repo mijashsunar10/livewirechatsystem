@@ -65,13 +65,16 @@ class User extends Authenticatable
                 ->whereNull('read_at');
         }
 
-        public function lastMessage()
-        {
-            return $this->hasOne(ChatMessage::class, 'sender_id')
-                ->where(function($query) {
-                    $query->where('sender_id', $this->id)
-                        ->orWhere('receiver_id', $this->id);
-                })
-                ->orderBy('created_at', 'desc');
-        }
+      // In app/Models/User.php
+public function lastConversationMessage()
+{
+    return $this->hasOne(ChatMessage::class, 'sender_id')
+        ->where('receiver_id', auth()->id())
+        ->orWhere(function($query) {
+            $query->where('sender_id', auth()->id())
+                  ->where('receiver_id', $this->id);
+        })
+        ->latest()
+        ->limit(1);
+}
 }

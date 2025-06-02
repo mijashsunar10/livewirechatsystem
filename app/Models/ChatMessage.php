@@ -27,19 +27,4 @@ class ChatMessage extends Model
     {
         return $this->hasMany(ChatMessage::class, 'reply_to');
     }
-
-   public function reactions()
-    {
-        return $this->hasMany(MessageReaction::class, 'message_id');
-        // Explicitly specify the foreign key
-    }
-    // Helper to get grouped reactions
-    public function getGroupedReactions()
-    {
-        return $this->reactions()
-            ->selectRaw('reaction, count(*) as count')
-            ->groupBy('reaction')
-            ->orderBy('count', 'desc')
-            ->get();
-    }
 }

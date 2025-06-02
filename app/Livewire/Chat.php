@@ -10,7 +10,7 @@ use Livewire\Component;
 
 class Chat extends Component
 {
-   public $users;
+    public $users;
     public $selectedUser;
     public $newMessage;
     public $messages;
@@ -18,13 +18,10 @@ class Chat extends Component
     public $loginID;
     public $unreadCounts = [];
     public $replyingTo = null;
-    public $showReactionPicker = null;
-    public $reactions = ['👍', '❤️', '😂', '😮', '😢'];
-
+    
 
     public function mount()
     {
-        
         $this->loginID = Auth::id();
         $this->authId = Auth::id();
         $this->loadUsersWithUnreadCounts();
@@ -32,36 +29,30 @@ class Chat extends Component
         $this->loadMessages();
     }
 
-   public function loadUsersWithUnreadCounts()
+  public function loadUsersWithUnreadCounts()
 {
     $this->users = User::whereNot('id', $this->authId)
         ->withCount(['unreadMessages' => function($query) {
             $query->where('receiver_id', $this->authId)
                   ->whereNull('read_at');
         }])
-        ->with(['lastMessage' => function($query) {
+        ->with(['lastConversationMessage' => function($query) {
             $query->where(function($q) {
                 $q->where('sender_id', $this->authId)
                   ->orWhere('receiver_id', $this->authId);
-            })->orderBy('created_at', 'desc');
+            })
+            ->orderBy('created_at', 'desc');
         }])
-        ->orderByDesc(function($query) {
-            $query->select('created_at')
-                ->from('chat_messages')
-                ->whereColumn('sender_id', 'users.id')
-                ->orWhereColumn('receiver_id', 'users.id')
-                ->orderBy('created_at', 'desc')
-                ->limit(1);
-        })
-        ->get();
+        ->get()
+        ->sortByDesc(function($user) {
+            return optional($user->lastConversationMessage)->created_at;
+        });
         
-    // Store unread counts separately for easy access
     foreach ($this->users as $user) {
         $this->unreadCounts[$user->id] = $user->unread_messages_count;
     }
 }
-
-        public function selectUser($id)
+public function selectUser($id)
 {
     // Before switching users, mark all messages from the current user as read
     if ($this->selectedUser) {
@@ -86,8 +77,7 @@ class Chat extends Component
     // Force Livewire to rerender frontend
     $this->dispatch('$refresh');
 
-    // Clear typing indicator
-    $this->dispatch('clearTypingIndicator');
+    
 }
 
     public function loadMessages()
@@ -104,81 +94,43 @@ class Chat extends Component
             ->orderBy('created_at', 'desc')
             ->get();
             
-        // Scroll to bottom after loading messages
         $this->dispatch('scrollToBottom');
     }
 
-   public function replyTo($messageId)
-{
-    $this->replyingTo = ChatMessage::find($messageId);
-    $this->dispatch('focusMessageInput');
-}
-
-public function cancelReply()
-{
-    $this->replyingTo = null;
-}
-
-public function toggleReactionPicker($messageId)
-{
-    $this->showReactionPicker = $this->showReactionPicker === $messageId ? null : $messageId;
-}
- public function addReaction($messageId, $reaction)
+    public function replyTo($messageId)
     {
-        $message = ChatMessage::find($messageId);
-        
-        $existingReaction = $message->reactions()
-            ->where('user_id', $this->authId)
-            ->first();
+        $this->replyingTo = ChatMessage::find($messageId);
+        $this->dispatch('focusMessageInput');
+    }
 
-        if ($existingReaction) {
-            if ($existingReaction->reaction === $reaction) {
-                $existingReaction->delete(); // Remove if same reaction clicked
-            } else {
-                $existingReaction->update(['reaction' => $reaction]); // Update if different
-            }
-        } else {
-            $message->reactions()->create([
-                'user_id' => $this->authId,
-                'reaction' => $reaction
-            ]);
+    public function cancelReply()
+    {
+        $this->replyingTo = null;
+    }
+
+    public function submit()
+    {
+        if(!$this->newMessage) return;
+
+        $messageData = [
+            'sender_id' => $this->authId,
+            'receiver_id' => $this->selectedUser->id,
+            'message' => $this->newMessage,
+        ];
+
+        if ($this->replyingTo) {
+            $messageData['reply_to'] = $this->replyingTo->id;
         }
+
+        $message = ChatMessage::create($messageData);
+
+        $this->messages->prepend($message);
+        $this->newMessage = '';
+        $this->replyingTo = null;
         
-        $this->showReactionPicker = null;
-        $this->loadMessages(); // Refresh to show updated reactions
-    }
-// Update your submit method to handle replies
-public function submit()
-{
-    if(!$this->newMessage) return;
-
-    $messageData = [
-        'sender_id' => $this->authId,
-        'receiver_id' => $this->selectedUser->id,
-        'message' => $this->newMessage,
-    ];
-
-    if ($this->replyingTo) {
-        $messageData['reply_to'] = $this->replyingTo->id;
-    }
-
-    $message = ChatMessage::create($messageData);
-
-    $this->messages->prepend($message);
-    $this->newMessage = '';
-    $this->replyingTo = null;
-    
-    $this->loadUsersWithUnreadCounts();
-    broadcast(new MessageSent($message));
-    $this->dispatch('scrollToBottom');
-}
-    public function updatedNewMessage($value)
-    {
-        $this->dispatch("userTyping", 
-            userId: $this->loginID, 
-            userName: Auth::user()->name, 
-            selectedUserID: $this->selectedUser->id
-        );
+        $this->loadUsersWithUnreadCounts();
+        broadcast(new MessageSent($message));
+        $this->dispatch('scrollToBottom');
     }
 
     public function getListeners()
@@ -188,9 +140,8 @@ public function submit()
             "scrollToBottom" => "scrollToBottom",
         ];
     }
-
             
-       public function newMessageNotification($message)
+    public function newMessageNotification($message)
 {
     // If message is from currently selected user
     if($message['sender_id'] == $this->selectedUser->id) {
