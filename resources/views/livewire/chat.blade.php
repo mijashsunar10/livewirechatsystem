@@ -51,11 +51,11 @@
                     <div class="text-lg font-semibold text-gray-800">{{$selectedUser->name}}</div>
                     <div class="text-xs text-gray-500">{{$selectedUser->email}}</div>
                 </div>
-                @if($unreadCounts[$selectedUser->id] > 0)
+                {{-- @if($unreadCounts[$selectedUser->id] > 0)
                     <span class="bg-blue-600 text-white text-xs px-2 py-1 rounded-full">
                         {{$unreadCounts[$selectedUser->id]}} unread
                     </span>
-                @endif
+                @endif --}}
             </div>
 
             <!-- Messages -->
@@ -68,18 +68,50 @@
                          @mouseleave="showActions = false; showTimestamp = false">
                         
                         <!-- Left side actions for SENT messages (blue bubbles) -->
-                        @if($message->sender_id === auth()->id())
-                        <div class="flex items-center self-end mb-2" x-show="showActions" x-transition>
-                            <div class="flex space-x-1 mx-1">
-                                <button wire:click="replyTo('{{$message->id}}')" 
-                                        class="text-xs p-1 rounded-full bg-gray-100 hover:bg-gray-200">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l7 7m-7-7l7-7" />
-                                    </svg>
-                                </button>
-                            </div>
-                        </div>
-                        @endif
+                       @if($message->sender_id === auth()->id())
+<div class="flex items-center self-end mb-2" x-show="showActions" x-transition>
+    <div class="flex space-x-1 mx-1">
+        <!-- Three dots menu -->
+        <div x-data="{ menuOpen: false }" class="relative">
+            <button @click="menuOpen = !menuOpen" class="text-xs p-1 rounded-full bg-gray-100 hover:bg-gray-200">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h.01M12 12h.01M19 12h.01" />
+                </svg>
+            </button>
+            
+            <!-- Dropdown menu -->
+            <div x-show="menuOpen" @click.away="menuOpen = false" 
+                 class="absolute right-0 bottom-full mb-2 w-40 bg-white rounded-md shadow-lg z-10 border border-gray-200">
+                <div class="py-1">
+                    <!-- Edit option -->
+                    <button @click="menuOpen = false; $wire.editMessage('{{$message->id}}', prompt('Edit your message:', '{{$message->message}}'))" 
+                            class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                        Edit
+                    </button>
+                    <!-- Delete for me -->
+                    <button @click="menuOpen = false; $wire.deleteMessage('{{$message->id}}')" 
+                            class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                        Delete for me
+                    </button>
+                    <!-- Delete for everyone -->
+                    <button @click="menuOpen = false; $wire.deleteMessage('{{$message->id}}', true)" 
+                            class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                        Delete for everyone
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Reply button -->
+        <button wire:click="replyTo('{{$message->id}}')" 
+                class="text-xs p-1 rounded-full bg-gray-100 hover:bg-gray-200">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l7 7m-7-7l7-7" />
+            </svg>
+        </button>
+    </div>
+</div>
+@endif
 
                         <div class="max-w-xs relative">
                             <!-- Timestamp for SENT messages (left side) -->
@@ -109,10 +141,14 @@
                             @endif
                             
                             <!-- Main message bubble -->
-                            <div class="px-4 py-2 rounded-2xl shadow 
-                                {{$message->sender_id === auth()->id() ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-800' }}">
-                                {{$message->message}}
-                            </div>
+                           <!-- Main message bubble -->
+                    <div class="px-4 py-2 rounded-2xl shadow 
+                        {{$message->sender_id === auth()->id() ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-800' }}">
+                        {{$message->message}}
+                        @if($message->edited_at)
+                            <span class="text-xs {{$message->sender_id === auth()->id() ? 'text-blue-200' : 'text-gray-500'}} ml-1">(edited)</span>
+                        @endif
+                    </div>
 
                             <!-- Timestamp for RECEIVED messages (right side) -->
                             @if($message->sender_id !== auth()->id())
@@ -124,17 +160,38 @@
 
                         <!-- Right side actions for RECEIVED messages (gray bubbles) -->
                         @if($message->sender_id !== auth()->id())
-                        <div class="flex items-center self-end mb-2" x-show="showActions" x-transition>
-                            <div class="flex space-x-1 mx-1">
-                                <button wire:click="replyTo('{{$message->id}}')" 
-                                        class="text-xs p-1 rounded-full bg-gray-100 hover:bg-gray-200">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l7 7m-7-7l7-7" />
-                                    </svg>
-                                </button>
-                            </div>
-                        </div>
-                        @endif
+<div class="flex items-center self-end mb-2" x-show="showActions" x-transition>
+    <div class="flex space-x-1 mx-1">
+        <!-- Three dots menu for received messages -->
+        <div x-data="{ menuOpen: false }" class="relative">
+            <button @click="menuOpen = !menuOpen" class="text-xs p-1 rounded-full bg-gray-100 hover:bg-gray-200">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h.01M12 12h.01M19 12h.01" />
+                </svg>
+            </button>
+            
+            <!-- Dropdown menu - only delete option -->
+            <div x-show="menuOpen" @click.away="menuOpen = false" 
+                 class="absolute right-0 bottom-full mb-2 w-32 bg-white rounded-md shadow-lg z-10 border border-gray-200">
+                <div class="py-1">
+                    <button @click="menuOpen = false; $wire.deleteMessage('{{$message->id}}')" 
+                            class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                        Delete
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Reply button -->
+        <button wire:click="replyTo('{{$message->id}}')" 
+                class="text-xs p-1 rounded-full bg-gray-100 hover:bg-gray-200">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l7 7m-7-7l7-7" />
+            </svg>
+        </button>
+    </div>
+</div>
+@endif
                     </div>
                 @endforeach
             </div>
