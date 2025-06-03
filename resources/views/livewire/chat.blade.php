@@ -103,7 +103,7 @@
                 <div class="flex space-x-1 mx-1">
                     <!-- Three dots menu -->
                     <div x-data="{ menuOpen: false }" class="relative">
-                        <button @click="menuOpen = !menuOpen" class="text-xs p-1 rounded-full bg-gray-100 hover:bg-gray-200">
+                        <button @click="menuOpen = !menuOpen" class="text-xs p-1 rounded-full bg-gray-100 text-black hover:bg-gray-200">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h.01M12 12h.01M19 12h.01" />
                             </svg>
@@ -111,7 +111,7 @@
                         
                         <!-- Dropdown menu -->
                         <div x-show="menuOpen" @click.away="menuOpen = false" 
-                             class="absolute right-0 bottom-full mb-2 w-40 bg-white rounded-md shadow-lg z-10 border border-gray-200">
+                             class="absolute right-0 bottom-full mb-2 w-40 bg-white rounded-md shadow-lg z-10 border text-black text-2xl border-gray-200">
                             <div class="py-1">
                                 <!-- Edit option (only for text messages) -->
                                 @if(!$message->isImage())
@@ -136,7 +136,7 @@
                     
                     <!-- Reply button -->
                     <button wire:click="replyTo('{{$message->id}}')" 
-                            class="text-xs p-1 rounded-full bg-gray-100 hover:bg-gray-200">
+                            class="text-xs p-1 rounded-full bg-gray-100 text-black hover:bg-gray-200">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l7 7m-7-7l7-7" />
                         </svg>
@@ -215,7 +215,7 @@
                 <div class="flex space-x-1 mx-1">
                     <!-- Three dots menu for received messages -->
                     <div x-data="{ menuOpen: false }" class="relative">
-                        <button @click="menuOpen = !menuOpen" class="text-xs p-1 rounded-full bg-gray-100 hover:bg-gray-200">
+                        <button @click="menuOpen = !menuOpen" class="text-xs p-1 rounded-full bg-gray-100 text-black hover:bg-gray-200">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h.01M12 12h.01M19 12h.01" />
                             </svg>
@@ -223,7 +223,7 @@
                         
                         <!-- Dropdown menu - only delete option -->
                         <div x-show="menuOpen" @click.away="menuOpen = false" 
-                             class="absolute right-0 bottom-full mb-2 w-32 bg-white rounded-md shadow-lg z-10 border border-gray-200">
+                             class="absolute right-0 bottom-full mb-2 w-32 bg-white rounded-md text-black  shadow-lg z-10 border border-gray-200">
                             <div class="py-1">
                                 <button @click="menuOpen = false; $wire.deleteMessage('{{$message->id}}')" 
                                         class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
@@ -235,7 +235,7 @@
                     
                     <!-- Reply button -->
                     <button wire:click="replyTo('{{$message->id}}')" 
-                            class="text-xs p-1 rounded-full bg-gray-100 hover:bg-gray-200">
+                            class="text-xs p-1 rounded-full bg-gray-100 text-black hover:bg-gray-200">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l7 7m-7-7l7-7" />
                         </svg>
@@ -287,7 +287,7 @@
         <input 
             wire:model.live="newMessage"
             type="text"
-            class="flex-1 border border-gray-300 rounded-full px-4 py-2 text-sm focus:outline-none"
+            class="flex-1 border border-gray-300 text-black rounded-full px-4 py-2 text-sm focus:outline-none"
             placeholder="Type your message..." 
         />
         <button 
