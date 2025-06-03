@@ -31,6 +31,8 @@ class Chat extends Component
     public $currentImagePath;
     public $currentImageIndex = 0;
     public $chatImages = [];
+    public $editingMessageId = null;
+    public $editingMessageContent = '';
     
 
     protected $listeners = [];
@@ -60,8 +62,6 @@ class Chat extends Component
             $this->loadMessages();
         }
 
-
- 
 
 
         public function selectUser($id)
@@ -362,4 +362,49 @@ class Chat extends Component
             {
                 return view('livewire.chat');
             }
+
+                        // Update your edit method
+            public function startEditing($messageId)
+            {
+                $message = ChatMessage::find($messageId);
+                
+                if ($message && $message->sender_id === $this->authId) {
+                    $this->editingMessageId = $messageId;
+                    $this->editingMessageContent = $message->message;
+                    $this->dispatch('focus-message-input');
+                }
+            }
+public function saveEdit()
+{
+    if (!$this->editingMessageId) return;
+    
+    $message = ChatMessage::findOrFail($this->editingMessageId);
+    
+    if ($message->sender_id === $this->authId) {
+        $message->update([
+            'message' => $this->editingMessageContent,
+            'edited_at' => now()
+        ]);
+        
+        broadcast(new MessageUpdated($message))->toOthers();
+        
+        // Reset all relevant properties
+        $this->editingMessageId = null;
+        $this->editingMessageContent = '';
+        $this->newMessage = ''; // Clear regular message input too
+        
+        // Reload messages
+        $this->loadMessages();
+        
+        // Dispatch event to reset input
+        $this->dispatch('edit-completed');
+    }
+}
+
+public function cancelEdit()
+{
+    $this->editingMessageId = null;
+    $this->editingMessageContent = '';
+    $this->dispatch('edit-cancelled');
+}
 }
